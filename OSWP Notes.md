@@ -27,8 +27,6 @@ sudo iwconfig wlan0mon
 
 - Displays current channel, frequency, mode, and other stats.
     
-![[Pasted image 20250315011921.png]]
-
 -------------
 
 #### 🔹 List System & Wireless Card Details
