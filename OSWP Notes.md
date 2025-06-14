@@ -381,6 +381,8 @@ aircrack-ng -r wifi-db home.cap
 aircrack-ng -r wifi-db office.cap 
 aircrack-ng -r wifi-db cafe.cap
 ```
+
+----------------------------
 #### 🔹 Install coWPAtty
 
 `sudo apt install cowpatty`
@@ -397,6 +399,7 @@ aircrack-ng -r wifi-db cafe.cap
     
 - Works offline, similar to `aircrack-ng`.
 
+----------------------------
 #### 🔹 Generate Pre-computed Hashes
 
 `genpmk -f /usr/share/john/password.lst -d wifuhashes -s wifu`
@@ -409,6 +412,7 @@ aircrack-ng -r wifi-db cafe.cap
 
 > This step creates a rainbow table for the `wifu` ESSID using a wordlist. Required for coWPAtty’s fast hash-based cracking.
 
+----------------------------
 #### 🔹 Crack WPA Key using Precomputed Hashes
 
 `cowpatty -r wpajohn-01.cap -d wifuhashes -s wifu`
@@ -420,4 +424,5 @@ aircrack-ng -r wifi-db cafe.cap
 |`-s`|ESSID to match with hash file|
 
 > This attack is extremely fast (milliseconds), assuming the correct handshake and rainbow table are available.
+
 
