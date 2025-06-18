@@ -1,4 +1,4 @@
-![OSWP Banner](banner)
+![OSWP Banner](banner.png)
 
 # OSWP Notes
 
