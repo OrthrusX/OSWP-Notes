@@ -1,3 +1,5 @@
+![OSWP Banner](banner)
+
 # OSWP Notes
 
 This repository contains my personal notes for preparing for the Offensive Security Wireless Professional (OSWP) certification.
