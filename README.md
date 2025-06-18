@@ -1,4 +1,6 @@
-![OSWP Banner](banner)
+<p align="center">
+  <img src="banner" width="600" alt="OSWP Notes Banner">
+</p>
 
 # OSWP Notes
 
